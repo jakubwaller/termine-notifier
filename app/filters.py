@@ -11,6 +11,8 @@ def matches(f: Filter, slot: Slot) -> bool:
         d = date.fromisoformat(slot.date)
     except ValueError:
         return False
+    if f.max_days_ahead is not None and (d - date.today()).days > f.max_days_ahead:
+        return False
     if d.isoweekday() not in f.weekdays:
         return False
     try:

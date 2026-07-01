@@ -51,3 +51,22 @@ def test_match_time_window():
 def test_invalid_date_string_does_not_match():
     f = make_filter()
     assert matches(f, make_slot(date_str="not-a-date")) is False
+
+def test_max_days_ahead_boundary():
+    from freezegun import freeze_time
+    f = make_filter(weekdays=(1,2,3,4,5,6,7))
+    f = Filter(appointment_types=["svc-A"], locations="all",
+               weekdays=[1,2,3,4,5,6,7],
+               time_window_start=time(0,0), time_window_end=time(23,59),
+               max_days_ahead=7)
+    with freeze_time("2026-06-01"):
+        assert matches(f, make_slot(date_str="2026-06-01")) is True   # today
+        assert matches(f, make_slot(date_str="2026-06-08")) is True   # day 7: inclusive
+        assert matches(f, make_slot(date_str="2026-06-09")) is False  # day 8: out
+
+def test_max_days_ahead_none_means_no_limit():
+    f = Filter(appointment_types=["svc-A"], locations="all",
+               weekdays=[1,2,3,4,5,6,7],
+               time_window_start=time(0,0), time_window_end=time(23,59))
+    assert f.max_days_ahead is None
+    assert matches(f, make_slot(date_str="2099-01-01")) is True

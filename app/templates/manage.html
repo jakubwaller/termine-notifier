@@ -35,6 +35,20 @@
       <input type="time" name="time_end" value="{{ current.time_window_end.strftime('%H:%M') }}">
     </label>
 
+    {% set mda = current.max_days_ahead %}
+    {% set day_options = [3, 7, 14, 30] %}
+    <label>{% if lang == 'en' %}Only appointments within the next …{% else %}Nur Termine innerhalb der nächsten …{% endif %}
+      <select name="max_days_ahead">
+        <option value="" {% if not mda %}selected{% endif %}>{% if lang == 'en' %}no limit{% else %}ohne Begrenzung{% endif %}</option>
+        {% if mda and mda not in day_options %}
+          <option value="{{ mda }}" selected>{{ mda }} {% if lang == 'en' %}days{% else %}Tage{% endif %}</option>
+        {% endif %}
+        {% for n in day_options %}
+          <option value="{{ n }}" {% if mda == n %}selected{% endif %}>{{ n }} {% if lang == 'en' %}days{% else %}Tage{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+
     <fieldset>
       <legend>{% if lang == 'en' %}Days of week{% else %}Wochentage{% endif %}</legend>
       {% for n, label_de, label_en in [(1,'Mo','Mon'),(2,'Di','Tue'),(3,'Mi','Wed'),(4,'Do','Thu'),(5,'Fr','Fri'),(6,'Sa','Sat'),(7,'So','Sun')] %}

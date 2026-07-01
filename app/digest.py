@@ -56,10 +56,15 @@ def render_digest_text(sub: Subscription, slots: list[Slot], *,
         locations = ", ".join(loc_label(u) for u in f.locations)
     svc_lbl = t(lang, "digest.selection_service_label")
     loc_lbl = t(lang, "digest.selection_locations_label")
-    pad = max(len(svc_lbl), len(loc_lbl)) + 1  # width of the longest "label:"
+    win_lbl = t(lang, "digest.selection_window_label") if f.max_days_ahead else ""
+    labels = [l for l in (svc_lbl, loc_lbl, win_lbl) if l]
+    pad = max(len(l) for l in labels) + 1  # width of the longest "label:"
     lines.append(t(lang, "digest.selection_heading"))
     lines.append(f"  {(svc_lbl + ':').ljust(pad)} {services}")
     lines.append(f"  {(loc_lbl + ':').ljust(pad)} {locations}")
+    if f.max_days_ahead:
+        lines.append(f"  {(win_lbl + ':').ljust(pad)} "
+                     f"{t(lang, 'digest.window_days', n=f.max_days_ahead)}")
     lines.append("")
 
     # Slots grouped by office (offices sorted by display name); within an

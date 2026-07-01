@@ -143,3 +143,20 @@ def test_out_of_catalog_location_uuid_renders_uuid_not_crash():
     slots = [Slot("2026-06-12", "09:20", "ghost-loc", "svc-A", "tA")]
     text = _render(sub, slots, catalog=_cat())
     assert "ghost-loc" in text  # raw uuid as the office header, no exception
+
+
+def test_digest_echoes_max_days_ahead_window():
+    from dataclasses import replace
+    sub = _sub("de")
+    sub = replace(sub, sub_filter=replace(sub.sub_filter, max_days_ahead=7))
+    slots = [Slot("2026-06-10", "10:30", "loc-1", "svc-A", "t")]
+    text = _render(sub, slots, catalog=_cat())
+    assert "innerhalb der nächsten 7 Tage" in text
+    text_en = _render(replace(sub, language="en"), slots, catalog=_cat())
+    assert "within the next 7 days" in text_en
+
+
+def test_digest_omits_window_line_when_unlimited():
+    text = _render(_sub("de"), [Slot("2026-06-10", "10:30", "loc-1", "svc-A", "t")],
+                   catalog=_cat())
+    assert "Zeitraum" not in text

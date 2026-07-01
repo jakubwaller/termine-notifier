@@ -125,6 +125,14 @@ def _parse_hhmm(s: str) -> time_cls:
     return time_cls(int(h), int(m))
 
 
+def _parse_max_days(raw: str | None) -> int | None:
+    """Form value for 'only slots within the next N days'; ''/invalid → no limit."""
+    raw = (raw or "").strip()
+    if raw.isdigit() and int(raw) > 0:
+        return int(raw)
+    return None
+
+
 def _send_confirmation_email(conn, sub_id: int, email: str, lang: str, cfg) -> bool:
     """Try to send the confirmation now. Returns True if delivered, False if
     deferred (quota exhausted) — the sign-up stays pending and the poller's
@@ -285,6 +293,7 @@ def create_app() -> Flask:
             weekdays=weekdays,
             time_window_start=_parse_hhmm(ts),
             time_window_end=_parse_hhmm(te),
+            max_days_ahead=_parse_max_days(request.form.get("max_days_ahead")),
         )
         # 5. plan-cap overflow check + insert atomically (spec 3.2.6).
         conn = connect(cfg.db_path)
@@ -382,7 +391,9 @@ def create_app() -> Flask:
             f = Filter(appointment_types=[atype], locations=locations,
                        weekdays=weekdays,
                        time_window_start=_parse_hhmm(ts),
-                       time_window_end=_parse_hhmm(te))
+                       time_window_end=_parse_hhmm(te),
+                       max_days_ahead=_parse_max_days(
+                           request.form.get("max_days_ahead")))
             conn.execute("UPDATE subscriptions SET filters_json=? WHERE id=?",
                          (f.to_json(), sub_id))
             row = conn.execute("SELECT language FROM subscriptions WHERE id=?",
