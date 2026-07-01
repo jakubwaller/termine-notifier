@@ -3,11 +3,15 @@
 ## Prerequisites
 
 - Raspberry Pi running Docker + Docker Compose.
-- Domain `termine.jakubwaller.eu` (or replacement) pointing to the Pi's
+- Web domain `buergerwecker.de` (or replacement) pointing to the Pi's
   public IP. Ports 80 and 443 forwarded to the Pi.
 - USB HDD mounted at `/mnt/backup` (auto-mount via `/etc/fstab`).
 - Mailjet and Resend accounts with verified sender domain.
-- SPF / DKIM / DMARC records configured on `jakubwaller.eu` before any send.
+- SPF / DKIM / DMARC configured on the **sending** domain `jakubwaller.eu`
+  before any send. The web domain (`buergerwecker.de`) and the sending domain
+  (`jakubwaller.eu`) are intentionally decoupled — mail keeps going out from
+  the already-warmed `jakubwaller.eu` so a web-domain change never resets
+  email reputation.
 
 ## First deploy
 
@@ -21,7 +25,7 @@
 3. Verify the USB HDD is mounted at `/mnt/backup`.
 4. `docker compose up -d`.
 5. Watch logs: `docker compose logs -f`.
-6. Verify healthz: `curl https://termine.jakubwaller.eu/healthz`.
+6. Verify healthz: `curl https://buergerwecker.de/healthz`.
 
 ## Email delivery & quotas
 
