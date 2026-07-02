@@ -112,7 +112,7 @@ def test_slot_line_has_weekday_date_time_and_link():
     text = _render(sub, slots, catalog=_cat())
     line = next(ln for ln in text.splitlines() if "09:20" in ln)
     assert "Fr 12.06." in line                       # 2026-06-12 is a Friday
-    assert "https://x/go/tok-A" in line
+    assert "https://x/go/leipzig:tok-A" in line
 
 
 # ---------- per-slot service only when the filter spans >1 type ----------
@@ -172,7 +172,7 @@ def test_digest_caps_slots_at_soonest_and_summarizes_rest():
     slots = [Slot(f"2026-07-{(i % 28) + 1:02d}", f"{8 + (i % 10)}:00",
                   "loc-1", "svc-A", f"tok-{i}") for i in range(n_total)]
     text = _render(_sub("de"), slots, catalog=_cat())
-    rendered = text.count("/go/tok-")
+    rendered = text.count("/go/leipzig:tok-")
     assert rendered == MAX_SLOTS_PER_DIGEST
     assert "40 weitere passende Termine" in text
     # soonest-first selection: the earliest (day 01, 08:00) is in, and a

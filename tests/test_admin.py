@@ -77,8 +77,9 @@ def test_go_link_from_email_resolves_for_datetime_token(client):
     with patch("app.cycle.get_scraper") as gs, patch("app.cycle.send_digest"):
         sc = MagicMock(); sc.poll.return_value = [slot]; gs.return_value = sc
         run_cycle(conn, max_plans_per_city=10, rate_limit_minutes=15, cycle_id="c1")
-    # The email link is /go/<booking_token>; the browser/Flask decodes the path on click.
-    r = client.get(f"/go/{booking_token}", follow_redirects=False)
+    # The email link is /go/<city>:<booking_token> (tenant-prefixed so equal
+    # datetimes on different tenants cannot collide); Flask decodes the path.
+    r = client.get(f"/go/leipzig:{booking_token}", follow_redirects=False)
     assert r.status_code == 302
     assert "appointment_reserve" in r.headers["Location"]
 
@@ -285,3 +286,20 @@ def test_stats_today_counts_gated_by_stale_date(tmp_path):
     up = stats(conn)["upstream_by_city"]["leipzig"]
     assert up["polls_today"] == 0 and up["requests_today"] == 0   # stale day -> 0
     assert up["polls_total"] == 50 and up["requests_total"] == 120  # totals intact
+
+def test_go_tokens_do_not_collide_across_tenants(client):
+    """Two tenants can expose a slot at the SAME wall-clock datetime. The cache
+    key is tenant-prefixed, so both rows exist and each /go link redirects to
+    its own tenant's upstream URL — never the other's."""
+    from app.db import connect
+    conn = connect(os.environ["DB_PATH"])
+    dt = "2026-07-02T11:50:00+02:00"
+    conn.execute("INSERT INTO slots_cache (slot_token, city, upstream_url) "
+                 "VALUES (?, 'leipzig', 'https://up/ba')", (f"leipzig:{dt}",))
+    conn.execute("INSERT INTO slots_cache (slot_token, city, upstream_url) "
+                 "VALUES (?, 'leipzig-abh', 'https://up/abh')", (f"leipzig-abh:{dt}",))
+    enc = dt.replace(":", "%3a").replace("+", "%2b")
+    r_ba = client.get(f"/go/leipzig:{enc}", follow_redirects=False)
+    r_abh = client.get(f"/go/leipzig-abh:{enc}", follow_redirects=False)
+    assert r_ba.headers["Location"] == "https://up/ba"
+    assert r_abh.headers["Location"] == "https://up/abh"

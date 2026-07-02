@@ -227,14 +227,19 @@ def create_app() -> Flask:
             catalog = load_catalog(city)
         except CatalogError:
             # Unknown/garbage ?city= — land on the default tenant, not a 500.
-            return redirect("/")
+            return redirect("/?lang=en" if lang == "en" else "/")
         # Cross-links to the other tenants (e.g. Bürgerbüro ⇄ Ausländerbehörde),
         # labeled from each catalog's display.json.
         other_cities = []
         for other in available_cities():
             if other == city:
                 continue
-            ocat = load_catalog(other)
+            try:
+                ocat = load_catalog(other)
+            except CatalogError:
+                # An incomplete tenant dir (e.g. a scaffold with only a
+                # scraper_config.json) must not take down every tenant's page.
+                continue
             label = ocat.display_text("label", lang) or other
             url = f"/?city={other}" + ("&lang=en" if lang == "en" else "")
             other_cities.append((label, url))

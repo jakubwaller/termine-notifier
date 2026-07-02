@@ -118,7 +118,10 @@ def available_cities() -> list[str]:
 
 
 def _read_optional_json(path: Path) -> dict:
+    """Optional catalog files (EN labels, display.json) degrade to defaults —
+    a missing OR malformed optional file must never take a page down.
+    (json.JSONDecodeError subclasses ValueError.)"""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         return {}

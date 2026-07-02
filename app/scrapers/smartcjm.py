@@ -47,8 +47,8 @@ def parse_slots(html: str, *, service_uuid: str) -> list[Slot]:
         return []
     soup = BeautifulSoup(html, "html.parser")
     slots: list[Slot] = []
-    for btn in soup.find_all("button", attrs={"onclick": APPOINTMENT_RESERVE_RE}):
-        m = APPOINTMENT_RESERVE_RE.search(btn.get("onclick", ""))
+    for btn in soup.find_all("button", onclick=True):
+        m = APPOINTMENT_RESERVE_RE.search(btn["onclick"])
         if not m:
             continue
         encoded_dt, _duration, location_uuid, resource_uuid = m.groups()
@@ -66,6 +66,18 @@ def parse_slots(html: str, *, service_uuid: str) -> list[Slot]:
             resource_uuid=resource_uuid,
         ))
     return slots
+
+
+def has_locations_step(scfg: dict) -> bool:
+    """Whether this tenant's booking flow includes a locations step.
+
+    Single source of truth for the flow-topology decision — both poll()
+    (_run_flow) and catalog_sync.sync_city branch on it, and the two must
+    never disagree. `steps` is the vendor's delimiter-less concatenation
+    (e.g. "servicessearch_resultsbookingfinish"), posted back verbatim, so
+    substring containment is the only test available.
+    """
+    return "locations" in scfg["steps"]
 
 
 def _rewrite_8443(url: str) -> str:
@@ -189,7 +201,7 @@ def _run_flow(http: requests.Session, wsid: str, csrf: str, rev: str,
     like leipzig-abh-h skip the locations step entirely — there the services
     POST (with action_type=search) already returns the results page.
     """
-    if "locations" in scfg["steps"]:
+    if has_locations_step(scfg):
         _post_services(http, wsid, csrf, rev, plan, scfg)
         return _post_locations(http, wsid, csrf, rev, plan, catalog, scfg)
     return _post_services(http, wsid, csrf, rev, plan, scfg,

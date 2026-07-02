@@ -43,7 +43,10 @@ class Filter:
             time_window_start=_parse_hhmm(tw["start"]),
             time_window_end=_parse_hhmm(tw["end"]),
             # Absent in rows written before this field existed → no limit.
-            max_days_ahead=d.get("max_days_ahead"),
+            # 0 also normalizes to no-limit: the form can't produce it, and the
+            # consumers (matches() vs digest/manage truthiness) would otherwise
+            # disagree on what 0 means.
+            max_days_ahead=d.get("max_days_ahead") or None,
         )
 
 def _parse_hhmm(s: str) -> time:

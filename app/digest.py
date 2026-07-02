@@ -95,7 +95,9 @@ def render_digest_text(sub: Subscription, slots: list[Slot], *,
     for office_uuid in sorted(by_office, key=loc_label):
         lines.append(loc_label(office_uuid))
         for s in sorted(by_office[office_uuid], key=lambda s: (s.date, s.time_str)):
-            go_url = f"{public_base_url}/go/{s.booking_token}"
+            # Tenant-prefixed to match the slots_cache key (see cycle.py): the
+            # bare token is only a datetime and would collide across tenants.
+            go_url = f"{public_base_url}/go/{sub.city}:{s.booking_token}"
             date_str = _format_date(s.date, lang)
             if multi_service:
                 lines.append(f"  {date_str}  {s.time_str}  ·  "

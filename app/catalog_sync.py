@@ -69,15 +69,16 @@ def sync_city(city: str,
 
     # Single-location tenants (e.g. leipzig-abh-h) have no locations step in
     # their flow, so there is nothing to probe: the location list is static in
-    # the catalog and never drift-checked.
-    has_locations_step = "locations" in scfg["steps"]
+    # the catalog and never drift-checked. The topology decision is shared
+    # with the poller (smartcjm._run_flow) so the two can never disagree.
+    from app.scrapers.smartcjm import has_locations_step
 
     try:
         live_services, live_services_en = fetch_services(http, scfg["base_url"], scfg["uid"])
         live_locations = (fetch_locations(http, scfg["base_url"], scfg["uid"],
                                           list(live_services.values()),
                                           scfg["steps"])
-                          if has_locations_step else current_locations)
+                          if has_locations_step(scfg) else current_locations)
     except (requests.RequestException, RuntimeError) as exc:
         return {"error": str(exc),
                 "service_drift": {}, "location_drift": {}}
