@@ -303,3 +303,34 @@ def test_go_tokens_do_not_collide_across_tenants(client):
     r_abh = client.get(f"/go/leipzig-abh:{enc}", follow_redirects=False)
     assert r_ba.headers["Location"] == "https://up/ba"
     assert r_abh.headers["Location"] == "https://up/abh"
+
+def test_admin_aggregates_upstream_load_per_host_and_labels_tenants(client):
+    """Both Leipzig tenants poll the same physical host: the dashboard must
+    show the combined host load (the rate-limit-relevant number) and label
+    tenant cards from display.json instead of the raw catalog key."""
+    from app.db import connect
+    conn = connect(os.environ["DB_PATH"])
+    today = datetime.utcnow().date().isoformat()
+    for city, polls, reqs in [("leipzig", 10, 30), ("leipzig-abh", 4, 8)]:
+        conn.execute(
+            "INSERT INTO city_state (city, polls_today, polls_total, "
+            "requests_today, requests_total, counts_date, last_polled_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+            (city, polls, polls, reqs, reqs, today))
+    s = stats(conn)
+    host = s["upstream_by_host"]["terminvereinbarung.leipzig.de"]
+    assert host["requests_today"] == 38          # 30 + 8, combined
+    assert host["polls_today"] == 14
+    assert host["tenants"] == ["leipzig", "leipzig-abh"]
+    # Tenant labels come from display.json (admin is English-only).
+    assert "Ausländerbehörde" in s["city_labels"]["leipzig-abh"] or \
+           "Foreigners" in s["city_labels"]["leipzig-abh"]
+    # Dashboard renders the labeled card + the host section.
+    html = client.get("/admin?token=admin-tok").data.decode()
+    assert "Upstream hosts" in html
+    assert "terminvereinbarung.leipzig.de" in html
+    assert "Leipzig-abh" not in html             # raw key no longer shown
+    # Text summary mirrors both.
+    body = render_summary_text(s, now=datetime.utcnow())
+    assert "UPSTREAM HOSTS" in body
+    assert "38 today" in body
